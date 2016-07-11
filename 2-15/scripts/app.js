@@ -154,7 +154,24 @@
   // Gets a forecast for a specific city and update the card with the data
   app.getForecast = function(key, label) {
     var url = weatherAPIUrlBase + key + '.json';
+    // First, check if cache is available and has data.
+    if ('cache' in window) {
+      caches.match(url).then(function(response) {
+        if (response) {
+          response.json().then(function(json) {
+            // Solo actualizar del cache
+            // si la consulta hecha a internet aun no regresa.
+            if (app.hasRequestPending) {
+              json.key = key;
+              json.label = label;
+              app.updateForecastCard(json);
+            }
+          });
+        }
+      });
+    }
     // Make the XHR to get the data, then update the card
+    app.hasRequestPending = true;
     var request = new XMLHttpRequest();
     request.onreadystatechange = function() {
       if (request.readyState === XMLHttpRequest.DONE) {
@@ -162,6 +179,7 @@
           var response = JSON.parse(request.response);
           response.key = key;
           response.label = label;
+          app.hasRequestPending = false;
           app.updateForecastCard(response);
         }
       }
@@ -196,14 +214,14 @@
         ];
         app.saveSelectedCities();
       }
-    });    
+    });
   });
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
      .register('/service-worker.js')
-     .then(function() { 
-        console.log('Service Worker Registered'); 
+     .then(function() {
+        console.log('Service Worker Registered');
       });
   }
 
